@@ -11,8 +11,8 @@ venv/
 .ruff_cache/
 .mypy_cache/
 
-# botpass local identity (never commit private keys)
-.botpass/
+# wingfoot local identity (never commit private keys)
+.wingfoot/
 *.pem
 
 # Large video render kept out of git history (ship via a GitHub Release instead).
