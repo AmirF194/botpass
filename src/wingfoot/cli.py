@@ -10,7 +10,7 @@ from . import http as _http
 from .directory import directory_json
 from .doctor import doctor
 from .keys import Identity, ephemeral_identity, generate_private_key, load_identity, save_identity
-from .rfc9421 import sign_request
+from .rfc9421 import sign_directory, sign_request
 from .verifier import _Colors, demo, start_verifier
 
 
@@ -40,8 +40,22 @@ def cmd_init(args) -> int:
 
 
 def cmd_directory(args) -> int:
-    identity = _require_identity(_Colors())
+    C = _Colors()
+    identity = _require_identity(C)
     print(directory_json([identity.jwk]))
+    if args.sign:
+        if not identity.agent_url.startswith("http"):
+            print(f"\n{C.yellow}Can't sign:{C.reset} no public directory URL. "
+                  f"Re-run `wingfoot init --agent https://your-domain` first.", file=sys.stderr)
+            return 2
+        dir_url = identity.agent_url.rstrip("/") + DIRECTORY_PATH
+        signed = sign_directory(dir_url, identity.private_key, identity.keyid)
+        print(f"\n{C.dim}# Serve the JSON above with these response headers and "
+              f"Content-Type: application/http-message-signatures-directory+json{C.reset}")
+        print(f"{C.dim}# Verifiers (e.g. Cloudflare) require this signature. "
+              f"Valid until epoch {signed.expires}; re-run before then to refresh.{C.reset}")
+        for k, v in signed.headers.items():
+            print(f"{k}: {v}")
     return 0
 
 
@@ -127,6 +141,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_init)
 
     s = sub.add_parser("directory", help="print the JWKS to host at the well-known path")
+    s.add_argument("--sign", action="store_true",
+                   help="also print the signed response headers verifiers require")
     s.set_defaults(func=cmd_directory)
 
     s = sub.add_parser("serve", help="serve your key directory (and verify) locally")
