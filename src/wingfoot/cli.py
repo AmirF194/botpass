@@ -10,6 +10,7 @@ from . import http as _http
 from .directory import directory_json
 from .doctor import doctor
 from .keys import Identity, ephemeral_identity, generate_private_key, load_identity, save_identity
+from .register import PROVIDERS, register
 from .rfc9421 import sign_directory, sign_request
 from .verifier import _Colors, demo, start_verifier
 
@@ -119,6 +120,13 @@ def cmd_demo(args) -> int:
     return 0 if demo() else 1
 
 
+def cmd_register(args) -> int:
+    C = _Colors()
+    identity = _require_identity(C)
+    return register(identity, args.provider, email=args.email, user_agent=args.user_agent,
+                    open_browser=args.open, skip_checks=args.no_check)
+
+
 def _origin(url: str) -> str:
     p = urlsplit(url)
     return f"{p.scheme}://{p.netloc}"
@@ -162,6 +170,16 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("doctor", help="diagnose why a URL blocks (or accepts) your signed agent")
     s.add_argument("url")
     s.set_defaults(func=cmd_doctor)
+
+    s = sub.add_parser("register",
+                       help="print a ready-to-paste registration packet for each verifier program")
+    s.add_argument("provider", nargs="?", choices=[p.slug for p in PROVIDERS],
+                   help="only this provider (default: all)")
+    s.add_argument("--email", help="contact email to include in the packet")
+    s.add_argument("--user-agent", help="your bot's User-Agent, if not wingfoot's default")
+    s.add_argument("--open", action="store_true", help="also open the form in your browser")
+    s.add_argument("--no-check", action="store_true", help="skip the live directory preflight")
+    s.set_defaults(func=cmd_register)
 
     return p
 

@@ -113,8 +113,8 @@ def doctor(url: str, home=DEFAULT_HOME) -> int:
         print(f"{C.yellow}Your signature is valid and your key is published, but "
               f"{_origin(url)} still returned {signed_resp.status}.{C.reset}")
         print(f"  {C.dim}Most likely the target does not support Web Bot Auth yet, or has not "
-              f"allow-listed your key. Next: confirm it supports Web Bot Auth and register your "
-              f"directory ({identity.agent_url}) with them.{C.reset}")
+              f"allow-listed your key. Next: run `wingfoot register` for a ready-to-paste "
+              f"registration packet for each verifier program.{C.reset}")
     else:
         print(f"{C.red}Blocked, and your local setup has a problem above. Fix that first.{C.reset}")
     return 1
