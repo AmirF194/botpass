@@ -186,6 +186,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     parser = build_parser()
+    if argv is None:
+        argv = sys.argv[1:]
+    if not argv:
+        # Bare `wingfoot` is a first-contact moment, not a mistake: show the full
+        # help (same as -h) instead of argparse's "arguments are required" error.
+        parser.print_help()
+        return 0
     args = parser.parse_args(argv)
     try:
         return args.func(args)
