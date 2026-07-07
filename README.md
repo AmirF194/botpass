@@ -24,14 +24,12 @@ it up by hand is fiddly, and a failed signature usually just returns `403` with 
 
 ## Install
 
-Not on PyPI yet, so install from source:
-
 ```bash
-git clone https://github.com/AmirF194/wingfoot
-cd wingfoot
-pip install -e .
+pip install wingfoot
 wingfoot demo
 ```
+
+Or without installing anything: `uvx wingfoot demo`.
 
 Python 3.9+. The only runtime dependency is `cryptography`.
 
