@@ -1,0 +1,43 @@
+name: Bug report
+description: Something in wingfoot did not work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. For a **security** vulnerability, please do not file a
+        public issue — use
+        [private reporting](https://github.com/AmirF194/wingfoot/security/advisories/new)
+        instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you run, what happened, and what did you expect instead?
+      placeholder: |
+        $ wingfoot doctor https://example.com/
+        ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: wingfoot version
+      description: Output of `wingfoot --version`.
+      placeholder: "0.1.1"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: OS and Python version
+      placeholder: "macOS 14.5, Python 3.12"
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Logs, tracebacks, or context. Please redact any private keys or signatures.
+    validations:
+      required: false
