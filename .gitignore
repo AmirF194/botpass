@@ -23,3 +23,6 @@ media/*.mp4
 .DS_Store
 .idea/
 .vscode/
+
+# Launch drafts and registration packets (contain contact details)
+launch/
