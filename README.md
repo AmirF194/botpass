@@ -20,7 +20,8 @@ command that sends a signed request and reports why it was accepted or rejected.
 Background: Cloudflare, Akamai, and Fastly increasingly block AI agents and crawlers by default.
 [Web Bot Auth](https://developers.cloudflare.com/bots/reference/bot-verification/web-bot-auth/)
 lets a legitimate agent prove its identity instead of being treated as a hostile scraper. Setting
-it up by hand is fiddly, and a failed signature usually just returns `403` with no explanation.
+it up by hand takes a lot of trial and error, and a failed signature usually just returns `403`
+with no explanation.
 
 ## Install
 
@@ -118,6 +119,7 @@ Add `--open` to launch the forms in your browser, or name one provider: `wingfoo
 |---------|--------------|
 | `wingfoot demo` | Run the unsigned/signed flow against a local verifier. No setup. |
 | `wingfoot init --agent <url>` | Create a lasting identity (keypair + directory). |
+| `wingfoot identity` | Show your identity, or change its URL / User-Agent without replacing the key. |
 | `wingfoot directory` | Print the JWKS to host at the well-known path. |
 | `wingfoot serve` | Serve your key directory locally (and verify requests). |
 | `wingfoot sign <url>` | Send a Web-Bot-Auth-signed request. |

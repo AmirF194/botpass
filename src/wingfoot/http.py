@@ -6,13 +6,16 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 
-from . import __version__
-
 # urllib's default User-Agent ("Python-urllib/x.y") is blocked outright by many
 # CDNs (Cloudflare, Akamai) as an unidentified bot — which would make a
 # verified-bot tool fail before it even gets to prove its identity. Send a
 # descriptive UA instead; callers can override it via the `headers` argument.
-DEFAULT_USER_AGENT = f"wingfoot/{__version__} (+https://github.com/AmirF194/wingfoot)"
+#
+# Deliberately unversioned: verifier registration forms record a User-Agent and a
+# human reviews it, so a UA carrying the release number would stop matching the
+# moment we ship a patch — and re-registering costs another manual review. The
+# repo URL identifies us; the version does not need to.
+DEFAULT_USER_AGENT = "wingfoot (+https://github.com/AmirF194/wingfoot)"
 
 
 @dataclass

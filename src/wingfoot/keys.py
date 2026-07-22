@@ -84,6 +84,12 @@ class IdentityError(ValueError):
 class Identity:
     private_key: Ed25519PrivateKey
     agent_url: str  # the origin that hosts this bot's directory
+    # The User-Agent this bot sends. Persisted because verifier registration forms
+    # record a UA that a human reviews: whatever `wingfoot register` prints has to be
+    # what outbound requests actually carry, or the registration describes a bot that
+    # never shows up. ``None`` means "not recorded" (identities created before this
+    # was stored), and callers fall back to ``http.DEFAULT_USER_AGENT``.
+    user_agent: str | None = None
 
     @property
     def public_key(self) -> Ed25519PublicKey:
@@ -108,10 +114,22 @@ def save_identity(identity: Identity, home: Path = DEFAULT_HOME) -> Path:
     )
     key_path.write_bytes(pem)
     key_path.chmod(0o600)
-    (home / "config.json").write_text(
-        json.dumps({"agent_url": identity.agent_url, "keyid": identity.keyid}, indent=2)
-    )
+    config = {"agent_url": identity.agent_url, "keyid": identity.keyid}
+    if identity.user_agent:
+        config["user_agent"] = identity.user_agent
+    (home / "config.json").write_text(json.dumps(config, indent=2))
     return home
+
+
+def identity_exists(home: Path = DEFAULT_HOME) -> bool:
+    """True if a private key is stored here — even a corrupt one that won't load.
+
+    Deliberately does not parse the key. This guards `init` from overwriting, and an
+    unreadable key is still one the user may be able to recover by hand; replacing it
+    means a new keyid, which invalidates any verifier registration made against the
+    old one.
+    """
+    return (home / "private_key.pem").exists()
 
 
 def load_identity(home: Path = DEFAULT_HOME) -> Identity | None:
@@ -139,7 +157,9 @@ def load_identity(home: Path = DEFAULT_HOME) -> Identity | None:
         raise IdentityError(
             f"identity config {config_path} is corrupt or incomplete ({exc}); re-run `wingfoot init`"
         ) from exc
-    return Identity(private_key=private_key, agent_url=agent_url)
+    # Absent in identities created before the UA was recorded; not an error.
+    return Identity(private_key=private_key, agent_url=agent_url,
+                    user_agent=config.get("user_agent"))
 
 
 def ephemeral_identity(agent_url: str) -> Identity:
