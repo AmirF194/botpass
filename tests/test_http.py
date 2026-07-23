@@ -1,5 +1,6 @@
 """http.request sends a descriptive User-Agent, not urllib's CDN-blocked default."""
 import contextlib
+import re
 
 from wingfoot import http as _http
 
@@ -31,8 +32,15 @@ def test_default_user_agent_is_identifiable(monkeypatch):
     ua = seen["req"].get_header("User-agent")
     # A verified-bot tool must not go out as the blocked "Python-urllib/x.y".
     assert ua is not None
-    assert ua.startswith("wingfoot/")
+    assert ua.startswith("wingfoot")
     assert "Python-urllib" not in ua
+
+
+def test_default_user_agent_carries_no_release_version():
+    """Verifier registrations record a UA that a human reviews, so it must survive a
+    release. A version in the default UA would silently invalidate the registration
+    on the next patch bump and cost another manual review cycle."""
+    assert not re.search(r"\d+\.\d+", _http.DEFAULT_USER_AGENT)
 
 
 def test_caller_can_override_user_agent(monkeypatch):

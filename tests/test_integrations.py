@@ -56,3 +56,28 @@ def test_missing_identity_is_a_clear_error(monkeypatch):
     monkeypatch.setattr("wingfoot.integrations.load_identity", lambda *a, **k: None)
     with pytest.raises(RuntimeError, match="wingfoot init"):
         wingfoot.signed_headers("https://example.com/")
+
+
+def test_signed_headers_send_the_user_agent_that_register_declares():
+    """The UA on the identity must reach the wire. Verifier registration records a
+    User-Agent that a human reviews; if signed requests went out as the HTTP client's
+    own default instead, the registration would describe a bot that never appears in
+    the verifier's logs."""
+    from wingfoot.register import registration_fields
+
+    identity = ephemeral_identity(agent_url="https://bot.example")
+    identity.user_agent = "MyBot/1.0 (+https://bot.example)"
+
+    sent = wingfoot.signed_headers("https://example.com/", identity=identity)
+    declared = dict(registration_fields(identity))["User-Agent"]
+
+    assert sent["User-Agent"] == "MyBot/1.0 (+https://bot.example)"
+    assert sent["User-Agent"] == declared
+
+
+def test_signed_headers_leave_user_agent_alone_when_identity_records_none():
+    """Identities created before the UA was recorded must not have one invented for
+    them — the caller's own client default stands."""
+    identity = ephemeral_identity(agent_url="https://bot.example")
+    assert identity.user_agent is None
+    assert "User-Agent" not in wingfoot.signed_headers("https://example.com/", identity=identity)

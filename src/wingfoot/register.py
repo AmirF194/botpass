@@ -54,7 +54,9 @@ def registration_fields(identity: Identity, *, email: str | None = None,
     """The answers every provider form asks for, in copy/paste order."""
     return [
         ("Bot / agent name", _host(identity.agent_url)),
-        ("User-Agent", user_agent or _http.DEFAULT_USER_AGENT),
+        # Prefer the UA recorded on the identity: that is the one signed requests
+        # actually carry, so the form describes the bot a reviewer will really see.
+        ("User-Agent", user_agent or identity.user_agent or _http.DEFAULT_USER_AGENT),
         ("Signature-Agent (domain)", identity.agent_url),
         ("Key directory URL", directory_url_for(identity.agent_url)),
         ("Key ID (JWK thumbprint)", identity.keyid),

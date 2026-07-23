@@ -11,10 +11,12 @@ from . import http as _http
 from .directory import directory_json
 from .doctor import doctor
 from .keys import (
+    DEFAULT_HOME,
     Identity,
     IdentityError,
     ephemeral_identity,
     generate_private_key,
+    identity_exists,
     load_identity,
     save_identity,
 )
@@ -32,14 +34,54 @@ def _require_identity(C) -> Identity:
     return identity
 
 
+def cmd_identity(args) -> int:
+    """Show the stored identity, or change its fields while keeping the key."""
+    C = _Colors()
+    identity = _require_identity(C)
+    changed = []
+    if args.agent:
+        identity.agent_url = args.agent.rstrip("/")
+        changed.append("agent URL")
+    if args.user_agent:
+        identity.user_agent = args.user_agent
+        changed.append("User-Agent")
+    if changed:
+        # Re-saves the same private key, so the keyid — and any verifier
+        # registration made against it — survives.
+        save_identity(identity)
+        print(f"{C.green}Updated {' and '.join(changed)}.{C.reset} Your key is unchanged.")
+    print(f"  keyid       {identity.keyid}")
+    print(f"  directory   {identity.agent_url}{DIRECTORY_PATH}")
+    print(f"  user-agent  {identity.user_agent or _http.DEFAULT_USER_AGENT + ' (default, not recorded)'}")
+    print(f"  stored in   {DEFAULT_HOME}")
+    if changed:
+        print(f"\n{C.yellow}Note:{C.reset} re-run `wingfoot register` — the details you "
+              f"gave verifiers have changed.")
+    return 0
+
+
 def cmd_init(args) -> int:
     C = _Colors()
+    if identity_exists() and not args.force:
+        # A new key means a new keyid, which silently invalidates any verifier
+        # registration made against the old one — days of manual review, thrown away
+        # by a command that reads like it is safe to re-run.
+        print(f"{C.red}An identity already exists{C.reset} in {DEFAULT_HOME}.", file=sys.stderr)
+        print("Creating a new one replaces your private key and changes your keyid, "
+              "which invalidates any verifier registration for the old key.", file=sys.stderr)
+        print("\nTo change the agent URL or User-Agent while keeping your key:\n"
+              "  wingfoot identity --agent <url> --user-agent <ua>", file=sys.stderr)
+        print("To replace the key anyway: wingfoot init --force", file=sys.stderr)
+        return 2
     agent = args.agent or "http://127.0.0.1:8088"
-    identity = Identity(private_key=generate_private_key(), agent_url=agent.rstrip("/"))
+    # Record the UA now so `register` declares exactly what outbound requests send.
+    identity = Identity(private_key=generate_private_key(), agent_url=agent.rstrip("/"),
+                        user_agent=args.user_agent or _http.DEFAULT_USER_AGENT)
     home = save_identity(identity)
     print(f"{C.green}Created your bot identity.{C.reset}")
     print(f"  keyid       {identity.keyid}")
     print(f"  directory   {identity.agent_url}{DIRECTORY_PATH}")
+    print(f"  user-agent  {identity.user_agent}")
     print(f"  stored in   {home}")
     if not args.agent:
         print(f"\n{C.yellow}Note:{C.reset} using a placeholder directory URL. Re-run with "
@@ -160,7 +202,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("init", help="create a lasting bot identity (keypair + directory)")
     s.add_argument("--agent", help="the origin that will host your directory, e.g. https://your-bot.example")
+    s.add_argument("--user-agent",
+                   help="the User-Agent your bot sends; recorded so `wingfoot register` "
+                        "declares the same string to verifiers")
+    s.add_argument("--force", action="store_true",
+                   help="replace an existing identity (new key, new keyid — invalidates "
+                        "any verifier registration for the old key)")
     s.set_defaults(func=cmd_init)
+
+    s = sub.add_parser("identity", help="show your identity, or change it without replacing the key")
+    s.add_argument("--agent", help="update the origin that hosts your directory")
+    s.add_argument("--user-agent", help="update the User-Agent your bot sends")
+    s.set_defaults(func=cmd_identity)
 
     s = sub.add_parser("directory", help="print the JWKS to host at the well-known path")
     s.add_argument("--sign", action="store_true",

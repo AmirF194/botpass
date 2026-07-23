@@ -42,9 +42,16 @@ def signed_headers(url: str, identity: Optional[Identity] = None, **sign_kwargs)
     returned headers into your request yourself.
     """
     ident = _resolve_identity(identity)
-    return dict(
+    headers = dict(
         sign_request(url, ident.private_key, ident.keyid, ident.agent_url, **sign_kwargs).headers
     )
+    # Carry the identity's recorded User-Agent so requests/httpx send the same string
+    # `wingfoot register` declares to verifiers. Without this the client would send its
+    # own default (e.g. "python-requests/2.32") and the registration would describe a
+    # bot that never appears in the verifier's logs.
+    if ident.user_agent:
+        headers["User-Agent"] = ident.user_agent
+    return headers
 
 
 class requests_auth:  # noqa: N801 - reads as a factory at the call site

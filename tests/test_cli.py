@@ -41,3 +41,55 @@ def test_sign_print_only_needs_no_network(monkeypatch):
 
     monkeypatch.setattr("wingfoot.cli._http.request", boom)
     assert main(["sign", "https://example.com/", "--print-only"]) == 0
+
+
+# --- init must not destroy an existing key ----------------------------------
+
+def test_init_refuses_to_overwrite_an_existing_identity(monkeypatch, capsys):
+    """Re-running `init` reads as harmless but replaces the private key, changing the
+    keyid and invalidating any verifier registration made against the old one."""
+    saved = []
+    monkeypatch.setattr("wingfoot.cli.identity_exists", lambda *a, **k: True)
+    monkeypatch.setattr("wingfoot.cli.save_identity", lambda *a, **k: saved.append(a))
+
+    rc = main(["init", "--agent", "https://bot.example"])
+
+    assert rc == 2
+    assert saved == [], "init wrote over an existing identity"
+    err = capsys.readouterr().err
+    assert "already exists" in err
+    assert "wingfoot identity" in err, "should point at the non-destructive alternative"
+
+
+def test_init_force_replaces_the_identity(monkeypatch):
+    saved = []
+    monkeypatch.setattr("wingfoot.cli.identity_exists", lambda *a, **k: True)
+    monkeypatch.setattr("wingfoot.cli.save_identity",
+                        lambda ident, *a, **k: saved.append(ident) or "/tmp/home")
+
+    assert main(["init", "--agent", "https://bot.example", "--force"]) == 0
+    assert len(saved) == 1
+
+
+# --- identity updates keep the key ------------------------------------------
+
+def test_identity_update_keeps_the_same_key(monkeypatch, capsys):
+    from wingfoot.keys import ephemeral_identity
+
+    identity = ephemeral_identity(agent_url="https://old.example")
+    original_key = identity.private_key
+    original_keyid = identity.keyid
+    saved = []
+    monkeypatch.setattr("wingfoot.cli.load_identity", lambda *a, **k: identity)
+    monkeypatch.setattr("wingfoot.cli.save_identity",
+                        lambda ident, *a, **k: saved.append(ident) or "/tmp/home")
+
+    rc = main(["identity", "--agent", "https://new.example",
+               "--user-agent", "MyBot/1.0 (+https://new.example)"])
+
+    assert rc == 0
+    assert saved[0].private_key is original_key
+    assert saved[0].keyid == original_keyid
+    assert saved[0].agent_url == "https://new.example"
+    assert saved[0].user_agent == "MyBot/1.0 (+https://new.example)"
+    assert "register" in capsys.readouterr().out, "should prompt to re-register after a change"
